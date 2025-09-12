@@ -1,0 +1,55 @@
+certifi==2024.8.30
+charset-normalizer==3.4.0
+colorama==0.4.6
+idna==3.10
+# Editable Git install with no remote (litedram==2024.8)
+-e /Users/benchoi/Tools/litex/litedram
+# Editable Git install with no remote (liteeth==2024.8)
+-e /Users/benchoi/Tools/litex/liteeth
+# Editable Git install with no remote (liteiclink==2024.8)
+-e /Users/benchoi/Tools/litex/liteiclink
+# Editable Git install with no remote (litejesd204b==0.0.0)
+-e /Users/benchoi/Tools/litex/litejesd204b
+# Editable Git install with no remote (litepcie==2024.8)
+-e /Users/benchoi/Tools/litex/litepcie
+# Editable Git install with no remote (litesata==0.0.0)
+-e /Users/benchoi/Tools/litex/litesata
+# Editable Git install with no remote (litescope==0.0.0)
+-e /Users/benchoi/Tools/litex/litescope
+# Editable Git install with no remote (litesdcard==0.0.0)
+-e /Users/benchoi/Tools/litex/litesdcard
+# Editable Git install with no remote (litespi==0.0.0)
+-e /Users/benchoi/Tools/litex/litespi
+litex @ git+https://github.com/enjoy-digital/litex.git@f8a1a213d571aec40a39c8d51b626425c0cdd477
+# Editable Git install with no remote (litex-boards==2024.8)
+-e /Users/benchoi/Tools/litex/litex-boards
+migen @ git+https://github.com/m-labs/migen.git@6e3a9e150fb006dabc4b55043d3af18dbfecd7e8
+packaging==24.1
+pyserial==3.5
+# Editable Git install with no remote (pythondata-cpu-lm32==0.0.post199)
+-e /Users/benchoi/Tools/litex/pythondata-cpu-lm32
+# Editable Git install with no remote (pythondata-cpu-mor1kx==5.1.1.post142)
+-e /Users/benchoi/Tools/litex/pythondata-cpu-mor1kx
+# Editable Git install with no remote (pythondata-cpu-naxriscv==1.0.1.post325)
+-e /Users/benchoi/Tools/litex/pythondata-cpu-naxriscv
+# Editable Git install with no remote (pythondata-cpu-serv==1.2.0.post146)
+-e /Users/benchoi/Tools/litex/pythondata-cpu-serv
+# Editable Git install with no remote (pythondata-cpu-vexiiriscv==1.0.1.post325)
+-e /Users/benchoi/Tools/litex/pythondata-cpu-vexiiriscv
+# Editable Git install with no remote (pythondata-cpu-vexriscv==1.0.1.post407)
+-e /Users/benchoi/Tools/litex/pythondata-cpu-vexriscv
+# Editable Git install with no remote (pythondata-cpu-vexriscv-smp==1.0.1.post325)
+-e /Users/benchoi/Tools/litex/pythondata-cpu-vexriscv-smp
+# Editable Git install with no remote (pythondata-misc-tapcfg==0.0.post517)
+-e /Users/benchoi/Tools/litex/pythondata-misc-tapcfg
+# Editable Git install with no remote (pythondata-misc-usb_ohci==1.0.1.post325)
+-e /Users/benchoi/Tools/litex/pythondata-misc-usb_ohci
+# Editable Git install with no remote (pythondata-software-compiler_rt==0.0.post6206)
+-e /Users/benchoi/Tools/litex/pythondata-software-compiler_rt
+# Editable Git install with no remote (pythondata-software-picolibc==1.7.9.post181)
+-e /Users/benchoi/Tools/litex/pythondata-software-picolibc
+PyYAML==6.0.2
+requests==2.32.3
+urllib3==2.2.3
+# Editable Git install with no remote (valentyusb==0.0.0)
+-e /Users/benchoi/Tools/litex/valentyusb

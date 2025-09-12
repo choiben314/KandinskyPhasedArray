@@ -1,0 +1,34 @@
+{
+  "include": ["."],
+  "executionEnvironments": [
+    {
+      "root": ".",
+      "extraPaths": [
+        "/Users/benchoi/Tools/litex/litex",
+        "/Users/benchoi/Tools/litex/migen",
+        "/Users/benchoi/Tools/litex/liteeth",
+        "/Users/benchoi/Tools/litex/litedram",
+        "/Users/benchoi/Tools/litex/liteiclink",
+        "/Users/benchoi/Tools/litex/litejesd204b",
+        "/Users/benchoi/Tools/litex/litepcie",
+        "/Users/benchoi/Tools/litex/litesata",
+        "/Users/benchoi/Tools/litex/litescope",
+        "/Users/benchoi/Tools/litex/litesdcard",
+        "/Users/benchoi/Tools/litex/litespi",
+        "/Users/benchoi/Tools/litex/litex-boards",
+        "/Users/benchoi/Tools/litex/pythondata-cpu-lm32",
+        "/Users/benchoi/Tools/litex/pythondata-cpu-mor1kx",
+        "/Users/benchoi/Tools/litex/pythondata-cpu-naxriscv",
+        "/Users/benchoi/Tools/litex/pythondata-cpu-serv",
+        "/Users/benchoi/Tools/litex/pythondata-cpu-vexiiriscv",
+        "/Users/benchoi/Tools/litex/pythondata-cpu-vexriscv",
+        "/Users/benchoi/Tools/litex/pythondata-cpu-vexriscv-smp",
+        "/Users/benchoi/Tools/litex/pythondata-misc-tapcfg",
+        "/Users/benchoi/Tools/litex/pythondata-misc-usb_ohci",
+        "/Users/benchoi/Tools/litex/pythondata-software-compiler_rt",
+        "/Users/benchoi/Tools/litex/pythondata-software-picolibc",
+        "/Users/benchoi/Tools/litex/valentyusb"
+      ]
+    }
+  ]
+}

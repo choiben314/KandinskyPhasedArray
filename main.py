@@ -1,6 +1,7 @@
 #!/usr/bin/env python3
 
 import argparse
+from typing import Any
 from migen import *
 from litex.gen import LiteXModule
 from litex.soc.integration.soc_core import SoCMini
@@ -15,6 +16,8 @@ from hw import Platform  # Your custom platform (hw.py)
 # Clock and Reset Generator --------------------------------------------------------------------------------
 
 class _CRG(LiteXModule):
+    comb: Any
+    specials: Any
     def __init__(self, platform, sys_clk_freq):
         self.cd_sys = ClockDomain()
         clk25 = platform.request("clk25")
@@ -30,6 +33,7 @@ class _CRG(LiteXModule):
 # UDP Sender Module ----------------------------------------------------------------------------------------
 
 class UDPSender(LiteXModule):
+    comb: Any
     def __init__(self, ip_address, port, udp_port, data_width=32):
         # Parameters
         self.ip_address = convert_ip(ip_address)
@@ -56,6 +60,10 @@ class UDPSender(LiteXModule):
 # Main SoC Class -------------------------------------------------------------------------------------------
 
 class BarebonesUDP(SoCMini):
+    comb: Any
+    specials: Any
+    submodules: Any
+    platform: Any
     def __init__(self, platform, ip_address, host_ip_address, port, mac_address, sys_clk_freq=int(50e6)):
         # Clock / Reset Generator
         self.crg = _CRG(platform, sys_clk_freq)
@@ -87,6 +95,17 @@ class BarebonesUDP(SoCMini):
         self.platform.add_period_constraint(eth_tx_clk, 1e9 / self.ethphy.tx_clk_freq)
         self.platform.add_false_path_constraints(self.crg.cd_sys.clk, eth_rx_clk, eth_tx_clk)
 
+        # PDM Clock (~3.125 MHz from 50 MHz sys clock)
+        self.platform.add_source("cores/pdm_core.v")
+        pdm_clk_sig = Signal()
+        pdm_clk_pad = platform.request("pdm_clk", 0)
+        self.specials += Instance("PDMCore",
+            i_clk=self.crg.cd_sys.clk,
+            o_pdm_clk=pdm_clk_sig
+        )
+        self.comb += pdm_clk_pad.eq(pdm_clk_sig)
+        self.platform.add_period_constraint(pdm_clk_pad, 1e9 / (sys_clk_freq / 16))
+
         # UDP Port
         udp_port = self.ethcore.udp.crossbar.get_port(port, dw=32)
 
@@ -114,7 +133,7 @@ class BarebonesUDP(SoCMini):
         # IDLE State: Wait for counter to reach the threshold
         fsm.act("IDLE",
             NextValue(counter, counter + 1),
-            If(counter >= sys_clk_freq // 10,
+            If(counter >= sys_clk_freq // 1000,
                 NextValue(counter, 0),
                 NextState("SEND_PACKET"),
                 NextValue(led_signal, ~led_signal)

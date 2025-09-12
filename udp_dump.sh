@@ -1,1 +1,0 @@
-sudo tcpdump -l -n -i en9 udp port 5678 and src host 192.168.1.20 -XX | awk -f udp_parse.awk
