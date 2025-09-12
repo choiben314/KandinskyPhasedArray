@@ -48,7 +48,7 @@ class UDPSender(LiteXModule):
             udp_port.sink.src_port.eq(self.port),
             udp_port.sink.dst_port.eq(self.port),
             udp_port.sink.length.eq(4),
-            udp_port.sink.last_be.eq(2 ** (4) - 1),
+            udp_port.sink.last_be.eq(1 << ((self.data_width // 8) - 1)),  # 0b1000 for 32-bit
             udp_port.sink.error.eq(0),
             sink.ready.eq(udp_port.sink.ready),
         ]
