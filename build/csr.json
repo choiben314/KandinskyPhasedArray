@@ -1,0 +1,178 @@
+{
+    "csr_bases": {
+        "ctrl": 0,
+        "ethphy": 2048,
+        "gpio0": 4096,
+        "gpio1": 6144,
+        "leds": 8192,
+        "servo0": 10240,
+        "servo1": 12288,
+        "servo2": 14336,
+        "servo3": 16384,
+        "spiflash": 18432
+    },
+    "csr_registers": {
+        "ctrl_reset": {
+            "addr": 0,
+            "size": 1,
+            "type": "rw"
+        },
+        "ctrl_scratch": {
+            "addr": 4,
+            "size": 1,
+            "type": "rw"
+        },
+        "ctrl_bus_errors": {
+            "addr": 8,
+            "size": 1,
+            "type": "ro"
+        },
+        "ethphy_crg_reset": {
+            "addr": 2048,
+            "size": 1,
+            "type": "rw"
+        },
+        "ethphy_rx_inband_status": {
+            "addr": 2052,
+            "size": 1,
+            "type": "ro"
+        },
+        "ethphy_mdio_w": {
+            "addr": 2056,
+            "size": 1,
+            "type": "rw"
+        },
+        "ethphy_mdio_r": {
+            "addr": 2060,
+            "size": 1,
+            "type": "ro"
+        },
+        "gpio0_out": {
+            "addr": 4096,
+            "size": 1,
+            "type": "rw"
+        },
+        "gpio1_out": {
+            "addr": 6144,
+            "size": 1,
+            "type": "rw"
+        },
+        "leds_out": {
+            "addr": 8192,
+            "size": 1,
+            "type": "rw"
+        },
+        "servo0_enable": {
+            "addr": 10240,
+            "size": 1,
+            "type": "rw"
+        },
+        "servo0_width": {
+            "addr": 10244,
+            "size": 1,
+            "type": "rw"
+        },
+        "servo0_period": {
+            "addr": 10248,
+            "size": 1,
+            "type": "rw"
+        },
+        "servo1_enable": {
+            "addr": 12288,
+            "size": 1,
+            "type": "rw"
+        },
+        "servo1_width": {
+            "addr": 12292,
+            "size": 1,
+            "type": "rw"
+        },
+        "servo1_period": {
+            "addr": 12296,
+            "size": 1,
+            "type": "rw"
+        },
+        "servo2_enable": {
+            "addr": 14336,
+            "size": 1,
+            "type": "rw"
+        },
+        "servo2_width": {
+            "addr": 14340,
+            "size": 1,
+            "type": "rw"
+        },
+        "servo2_period": {
+            "addr": 14344,
+            "size": 1,
+            "type": "rw"
+        },
+        "servo3_enable": {
+            "addr": 16384,
+            "size": 1,
+            "type": "rw"
+        },
+        "servo3_width": {
+            "addr": 16388,
+            "size": 1,
+            "type": "rw"
+        },
+        "servo3_period": {
+            "addr": 16392,
+            "size": 1,
+            "type": "rw"
+        },
+        "spiflash_spi_control": {
+            "addr": 18432,
+            "size": 1,
+            "type": "rw"
+        },
+        "spiflash_spi_status": {
+            "addr": 18436,
+            "size": 1,
+            "type": "ro"
+        },
+        "spiflash_spi_mosi": {
+            "addr": 18440,
+            "size": 2,
+            "type": "rw"
+        },
+        "spiflash_spi_miso": {
+            "addr": 18448,
+            "size": 2,
+            "type": "ro"
+        },
+        "spiflash_spi_cs": {
+            "addr": 18456,
+            "size": 1,
+            "type": "rw"
+        },
+        "spiflash_spi_loopback": {
+            "addr": 18460,
+            "size": 1,
+            "type": "rw"
+        }
+    },
+    "constants": {
+        "config_platform_name": "colorlight_5a_75b",
+        "config_clock_frequency": 40000000,
+        "config_cpu_type_none": null,
+        "config_cpu_variant_standard": null,
+        "config_cpu_family": null,
+        "config_cpu_name": null,
+        "config_cpu_human_name": "unknown",
+        "config_csr_data_width": 32,
+        "config_csr_alignment": 32,
+        "config_bus_standard": "wishbone",
+        "config_bus_data_width": 32,
+        "config_bus_address_width": 32,
+        "config_bus_bursting": 0
+    },
+    "memories": {
+        "csr": {
+            "base": 0,
+            "size": 65536,
+            "type": "io"
+        }
+    }
+}
