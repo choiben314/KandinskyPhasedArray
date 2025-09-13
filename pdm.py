@@ -50,7 +50,7 @@ class UDPStreamer(Module):
 
         ip_address = convert_ip(ip_address)
 
-        max_packet = 48 # e.g., [packet_id, half0_word, half1_word] repeated 48 times
+        max_packet = 96 # e.g., [packet_id, half0_word, half1_word] repeated 96 times
         packet_counter = Signal(max=max_packet+1)
 
         self.submodules.fifo = fifo = stream.SyncFIFO([("data", data_width)], fifo_depth, buffered=True)
@@ -83,3 +83,92 @@ class UDPStreamer(Module):
                 )
             )
         )
+
+
+class UDPFake500Mbps(Module):
+    def __init__(self, data_width=32, clk_freq=int(50e6)):
+        # Generates continuous 12-byte groups: [packet_id, word0, word1]
+        # first asserted on packet_id, last asserted on word1.
+        # Average payload rate ~500 Mbps at clk_freq=50 MHz.
+        # Stream interface matches UDPStreamer.sink layout.
+        assert data_width in (8, 32)
+        self.source = source = stream.Endpoint(eth_tty_tx_description(data_width))
+
+        # Rate control: target_words_per_cycle = 500e6 / (data_width * clk_freq)
+        # For data_width=32 and clk=50e6 => 0.3125 = 5/16 words/cycle.
+        # Implement fractional accumulator with numerator/denominator = 5/16.
+        numerator   = 5
+        denominator = 16
+
+        acc       = Signal(max=denominator)  # 0..15
+        pending   = Signal()                 # pending word to send (valid must stay high until accepted)
+
+        packet_id       = Signal(32)
+        payload_counter = Signal(32)
+        word_index      = Signal(2)  # 0: header, 1: word0, 2: word1
+
+        emit_strobe = Signal()
+
+        # Fractional accumulator to generate average emission rate.
+        self.sync += [
+            If(acc + numerator >= denominator,
+                acc.eq(acc + numerator - denominator),
+                emit_strobe.eq(1)
+            ).Else(
+                acc.eq(acc + numerator),
+                emit_strobe.eq(0)
+            )
+        ]
+
+        # Manage pending/handshake.
+        sent = Signal()
+        self.comb += [
+            sent.eq(source.valid & source.ready)
+        ]
+        self.sync += [
+            If(sent,
+                pending.eq(0)
+            ).Elif(emit_strobe,
+                pending.eq(1)
+            )
+        ]
+
+        # Drive stream signals.
+        self.comb += [
+            source.valid.eq(pending),
+            source.first.eq(word_index == 0),
+            source.last.eq(word_index == 2)
+        ]
+
+        # Data mux per word within the 12-byte group.
+        with_payload0 = Signal(data_width)
+        with_payload1 = Signal(data_width)
+
+        # Payload generation (simple incrementing pattern)
+        self.comb += [
+            with_payload0.eq(payload_counter[:data_width]),
+            with_payload1.eq((payload_counter + 1)[:data_width])
+        ]
+
+        self.comb += [
+            If(word_index == 0,
+                source.data.eq(packet_id[:data_width])
+            ).Elif(word_index == 1,
+                source.data.eq(with_payload0)
+            ).Else(
+                source.data.eq(with_payload1)
+            )
+        ]
+
+        # Advance on successful handshake; maintain format and counters.
+        self.sync += [
+            If(sent,
+                If(word_index == 2,
+                    word_index.eq(0),
+                    packet_id.eq(packet_id + 1),
+                    payload_counter.eq(payload_counter + 2)
+                ).Else(
+                    word_index.eq(word_index + 1)
+                )
+            )
+        ]

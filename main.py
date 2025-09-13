@@ -17,7 +17,7 @@ from liteeth.phy.ecp5rgmii import LiteEthPHYRGMII
 from liteeth.core import LiteEthUDPIPCore
 from liteeth.common import convert_ip
 from hw import Platform
-from pdm import PDM, UDPStreamer
+from pdm import PDM, UDPStreamer, UDPFake500Mbps
 
 # Clock and Reset Generator --------------------------------------------------------------------------------
 
@@ -112,8 +112,9 @@ class BarebonesUDP(SoCMini):
         # self.comb += pdm_clk_pad.eq(pdm_clk_sig)
         # self.platform.add_period_constraint(pdm_clk_pad, 1e9 / (sys_clk_freq / 16))
 
-        # PDM Data Generator Module
+        # Fake 500 Mbps data generator (replaces PDM-to-UDP path for throughput test)
         self.submodules.pdm = PDM(platform.request("pdm_clk"), platform.request("pdm_data"))
+        # self.submodules.pdm = UDPFake500Mbps(data_width=32, clk_freq=self.clk_freq)
 
         # # PDM Data (two mics on one data line: rising-edge = Mic0, falling-edge = Mic1)
         # pdm_data_pads = platform.request("pdm_data", 0)  # 2-bit bus in platform; use bit 0 as shared line
