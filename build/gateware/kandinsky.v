@@ -9,7 +9,7 @@
 // Filename   : kandinsky.v
 // Device     : LFE5U-25F-6BG256C
 // LiteX sha1 : --------
-// Date       : 2025-09-12 12:21:41
+// Date       : 2025-09-12 21:35:32
 //------------------------------------------------------------------------------
 
 `timescale 1ns / 1ps
@@ -28,9 +28,9 @@ module kandinsky (
     output wire    [3:0] eth0_tx_data,
     input  wire          eth_clocks0_rx,
     output wire          eth_clocks0_tx,
-    output wire          pdm_clk0,
-    input  wire          user_btn_n0,
-    output wire          user_led_n0
+    output wire          pdm_clk,
+    input  wire          pdm_data,
+    input  wire          user_btn_n0
 );
 
 
@@ -399,9 +399,12 @@ BarebonesUDP
 │    │    │    └─── arbiter (Arbiter)
 │    │    │    └─── dispatcher (Dispatcher)
 │    │    │    │    └─── status_0* (Status)
-└─── udp_sender (UDPSender)
-└─── udpsender_0* (UDPSender)
-└─── fsm (FSM)
+└─── pdm (PDM)
+└─── udpstreamer_0* (UDPStreamer)
+│    └─── fifo (SyncFIFO)
+│    │    └─── fifo (SyncFIFOBuffered)
+│    │    │    └─── fifo (SyncFIFO)
+│    └─── fsm (FSM)
 └─── csr_bridge (Wishbone2CSR)
 │    └─── fsm (FSM)
 └─── csr_bankarray (CSRBankArray)
@@ -415,25 +418,24 @@ BarebonesUDP
 │    │    └─── csrstorage_1* (CSRStorage)
 │    │    └─── csrstatus_1* (CSRStatus)
 └─── csr_interconnect (InterconnectShared)
-└─── [PDMCore]
-└─── [FD1S3BX]
-└─── [FD1S3BX]
 └─── [ODDRX1F]
-└─── [FD1S3BX]
-└─── [FD1S3BX]
-└─── [FD1S3BX]
+└─── [ODDRX1F]
 └─── [FD1S3BX]
 └─── [ODDRX1F]
 └─── [ODDRX1F]
+└─── [FD1S3BX]
 └─── [ODDRX1F]
-└─── [ODDRX1F]
-└─── [ODDRX1F]
-└─── [IDDRX1F]
+└─── [FD1S3BX]
+└─── [FD1S3BX]
+└─── [FD1S3BX]
+└─── [FD1S3BX]
 └─── [IDDRX1F]
 └─── [IDDRX1F]
 └─── [IDDRX1F]
 └─── [IDDRX1F]
 └─── [TRELLIS_IO]
+└─── [ODDRX1F]
+└─── [IDDRX1F]
 * : Generated name.
 []: BlackBox.
 */
@@ -680,18 +682,11 @@ reg    [31:0] barebonesudp_bus_errors = 32'd0;
 reg           barebonesudp_bus_errors_re = 1'd0;
 wire   [31:0] barebonesudp_bus_errors_status;
 wire          barebonesudp_bus_errors_we;
-reg    [31:0] barebonesudp_counter = 32'd0;
-reg    [31:0] barebonesudp_counter_next_value0 = 32'd0;
-reg           barebonesudp_counter_next_value_ce0 = 1'd0;
 wire          barebonesudp_cpu_rst;
-reg           barebonesudp_led_signal = 1'd0;
-reg           barebonesudp_led_signal_next_value1 = 1'd0;
-reg           barebonesudp_led_signal_next_value_ce1 = 1'd0;
 reg           barebonesudp_reset_re = 1'd0;
 reg     [1:0] barebonesudp_reset_storage = 2'd0;
 reg           barebonesudp_scratch_re = 1'd0;
 reg    [31:0] barebonesudp_scratch_storage = 32'd305419896;
-reg    [31:0] barebonesudp_send_data = 32'd3735928559;
 reg           barebonesudp_soc_rst = 1'd0;
 wire          crg_clkin;
 wire          crg_clkout;
@@ -809,10 +804,45 @@ wire          ethphy_tx_ctl_oddrx1f;
 wire    [3:0] ethphy_tx_data_oddrx1f;
 wire          ethphy_w;
 wire          ethphy_we;
-reg     [2:0] fsm_next_state0 = 3'd0;
-reg           fsm_next_state1 = 1'd0;
-reg     [2:0] fsm_state0 = 3'd0;
-reg           fsm_state1 = 1'd0;
+reg    [12:0] fifo_consume = 13'd0;
+wire          fifo_do_read;
+wire          fifo_fifo_in_first;
+wire          fifo_fifo_in_last;
+wire   [31:0] fifo_fifo_in_payload_data;
+wire          fifo_fifo_out_first;
+wire          fifo_fifo_out_last;
+wire   [31:0] fifo_fifo_out_payload_data;
+reg    [13:0] fifo_level0 = 14'd0;
+wire   [13:0] fifo_level1;
+reg    [12:0] fifo_produce = 13'd0;
+wire   [12:0] fifo_rdport_adr;
+wire   [33:0] fifo_rdport_dat_r;
+wire          fifo_rdport_re;
+wire          fifo_re;
+reg           fifo_readable = 1'd0;
+reg           fifo_replace = 1'd0;
+wire          fifo_sink_first;
+wire          fifo_sink_last;
+wire   [31:0] fifo_sink_payload_data;
+wire          fifo_sink_ready;
+wire          fifo_sink_valid;
+wire          fifo_source_first;
+wire          fifo_source_last;
+wire   [31:0] fifo_source_payload_data;
+reg           fifo_source_ready = 1'd0;
+wire          fifo_source_valid;
+wire   [33:0] fifo_syncfifo_din;
+wire   [33:0] fifo_syncfifo_dout;
+wire          fifo_syncfifo_re;
+wire          fifo_syncfifo_readable;
+wire          fifo_syncfifo_we;
+wire          fifo_syncfifo_writable;
+reg    [12:0] fifo_wrport_adr = 13'd0;
+wire   [33:0] fifo_wrport_dat_r;
+wire   [33:0] fifo_wrport_dat_w;
+wire          fifo_wrport_we;
+reg     [2:0] fsm_next_state = 3'd0;
+reg     [2:0] fsm_state = 3'd0;
 reg           icmp_echo_param_fifo_consume = 1'd0;
 wire          icmp_echo_param_fifo_do_read;
 wire          icmp_echo_param_fifo_fifo_in_first;
@@ -2245,7 +2275,17 @@ reg           multiregimpl50 = 1'd0;
 reg           multiregimpl51 = 1'd0;
 reg           multiregimpl60 = 1'd0;
 reg           multiregimpl61 = 1'd0;
-wire          pdm_clk_sig;
+reg     [5:0] packet_counter = 6'd0;
+reg     [5:0] packet_counter_next_value = 6'd0;
+reg           packet_counter_next_value_ce = 1'd0;
+reg     [3:0] pdm_count = 4'd0;
+reg           pdm_data_reg = 1'd0;
+reg    [31:0] pdm_packet_id = 32'd0;
+reg           pdm_source_first = 1'd0;
+reg           pdm_source_last = 1'd0;
+reg    [31:0] pdm_source_payload_data = 32'd0;
+wire          pdm_source_ready;
+reg           pdm_source_valid = 1'd0;
 wire          re;
 wire          rst10;
 wire          rst11;
@@ -2378,9 +2418,25 @@ wire    [3:0] rx_source_source_payload_error;
 reg     [3:0] rx_source_source_payload_last_be = 4'd0;
 wire          rx_source_source_ready;
 reg           rx_source_source_valid = 1'd0;
+wire          sink_sink_first;
+wire          sink_sink_last;
+wire   [31:0] sink_sink_payload_data;
+wire          sink_sink_ready;
+wire          sink_sink_valid;
 wire   [39:0] slice_proxy0;
 wire   [47:0] slice_proxy1;
 wire   [55:0] slice_proxy2;
+reg           source_source_first = 1'd0;
+reg           source_source_last = 1'd0;
+reg    [15:0] source_source_param_dst_port = 16'd0;
+reg    [31:0] source_source_param_ip_address = 32'd0;
+reg    [15:0] source_source_param_length = 16'd0;
+reg    [15:0] source_source_param_src_port = 16'd0;
+reg    [31:0] source_source_payload_data = 32'd0;
+reg     [3:0] source_source_payload_error = 4'd0;
+reg     [3:0] source_source_payload_last_be = 4'd0;
+wire          source_source_ready;
+reg           source_source_valid = 1'd0;
 (* keep = "true" *)
 wire          sys_clk;
 wire          sys_rst;
@@ -2506,11 +2562,9 @@ reg     [3:0] tx_source_source_payload_error = 4'd0;
 reg     [3:0] tx_source_source_payload_last_be = 4'd0;
 wire          tx_source_source_ready;
 reg           tx_source_source_valid = 1'd0;
-reg           udp_sender_sink_last = 1'd0;
-reg    [31:0] udp_sender_sink_payload_data = 32'd0;
-wire          udp_sender_sink_ready;
-reg           udp_sender_sink_valid = 1'd0;
-reg           user_port_sink_first = 1'd0;
+reg           udpstreamer_next_state = 1'd0;
+reg           udpstreamer_state = 1'd0;
+wire          user_port_sink_first;
 wire          user_port_sink_last;
 wire   [15:0] user_port_sink_param_dst_port;
 wire   [31:0] user_port_sink_param_ip_address;
@@ -2540,8 +2594,22 @@ reg           wishbone2csr_state = 1'd0;
 // Combinatorial Logic
 //------------------------------------------------------------------------------
 
-assign pdm_clk0 = pdm_clk_sig;
-assign user_led_n0 = barebonesudp_led_signal;
+assign sink_sink_valid = pdm_source_valid;
+assign pdm_source_ready = sink_sink_ready;
+assign sink_sink_first = pdm_source_first;
+assign sink_sink_last = pdm_source_last;
+assign sink_sink_payload_data = pdm_source_payload_data;
+assign user_port_sink_valid = source_source_valid;
+assign source_source_ready = user_port_sink_ready;
+assign user_port_sink_first = source_source_first;
+assign user_port_sink_last = source_source_last;
+assign user_port_sink_payload_data = source_source_payload_data;
+assign user_port_sink_payload_last_be = source_source_payload_last_be;
+assign user_port_sink_payload_error = source_source_payload_error;
+assign user_port_sink_param_src_port = source_source_param_src_port;
+assign user_port_sink_param_dst_port = source_source_param_dst_port;
+assign user_port_sink_param_ip_address = source_source_param_ip_address;
+assign user_port_sink_param_length = source_source_param_length;
 assign crg_reset = (~user_btn_n0);
 assign crg_clkin = clk25;
 assign sys_clk = crg_clkout;
@@ -4730,16 +4798,16 @@ always @(*) begin
     arp_table_source_payload_reply <= 1'd0;
     arp_table_source_payload_request <= 1'd0;
     arp_table_source_valid <= 1'd0;
-    fsm_next_state0 <= 3'd0;
-    fsm_next_state0 <= fsm_state0;
-    case (fsm_state0)
+    fsm_next_state <= 3'd0;
+    fsm_next_state <= fsm_state;
+    case (fsm_state)
         1'd1: begin
             arp_table_source_valid <= 1'd1;
             arp_table_source_payload_reply <= 1'd1;
             arp_table_source_payload_ip_address <= arp_table_sink_payload_ip_address;
             arp_table_source_payload_mac_address <= arp_table_sink_payload_mac_address;
             if (arp_table_source_ready) begin
-                fsm_next_state0 <= 1'd0;
+                fsm_next_state <= 1'd0;
             end
         end
         2'd2: begin
@@ -4752,10 +4820,10 @@ always @(*) begin
                     arp_table_request_pending_liteetharp_fsm_next_value_ce0 <= 1'd1;
                     arp_table_response_response_payload_mac_address_liteetharp_fsm_next_value1 <= arp_table_sink_payload_mac_address;
                     arp_table_response_response_payload_mac_address_liteetharp_fsm_next_value_ce1 <= 1'd1;
-                    fsm_next_state0 <= 3'd6;
+                    fsm_next_state <= 3'd6;
                 end
             end else begin
-                fsm_next_state0 <= 1'd0;
+                fsm_next_state <= 1'd0;
             end
         end
         2'd3: begin
@@ -4766,9 +4834,9 @@ always @(*) begin
                 arp_table_request_counter_liteetharp_fsm_next_value_ce3 <= 1'd1;
                 arp_table_request_pending_liteetharp_fsm_next_value0 <= 1'd0;
                 arp_table_request_pending_liteetharp_fsm_next_value_ce0 <= 1'd1;
-                fsm_next_state0 <= 3'd6;
+                fsm_next_state <= 3'd6;
             end else begin
-                fsm_next_state0 <= 3'd5;
+                fsm_next_state <= 3'd5;
             end
         end
         3'd4: begin
@@ -4783,11 +4851,11 @@ always @(*) begin
                     arp_table_request_pending_liteetharp_fsm_next_value_ce0 <= 1'd1;
                     arp_table_request_ip_address_liteetharp_fsm_next_value4 <= arp_table_request_request_payload_ip_address;
                     arp_table_request_ip_address_liteetharp_fsm_next_value_ce4 <= 1'd1;
-                    fsm_next_state0 <= 3'd5;
+                    fsm_next_state <= 3'd5;
                 end else begin
                     arp_table_response_response_payload_mac_address_liteetharp_fsm_next_value1 <= arp_table_cache_response_payload_mac_address;
                     arp_table_response_response_payload_mac_address_liteetharp_fsm_next_value_ce1 <= 1'd1;
-                    fsm_next_state0 <= 3'd6;
+                    fsm_next_state <= 3'd6;
                 end
             end
         end
@@ -4798,7 +4866,7 @@ always @(*) begin
             if (arp_table_source_ready) begin
                 arp_table_request_counter_liteetharp_fsm_next_value3 <= (arp_table_request_counter + 1'd1);
                 arp_table_request_counter_liteetharp_fsm_next_value_ce3 <= 1'd1;
-                fsm_next_state0 <= 1'd0;
+                fsm_next_state <= 1'd0;
             end
         end
         3'd6: begin
@@ -4806,21 +4874,21 @@ always @(*) begin
             if (arp_table_response_response_ready) begin
                 arp_table_response_response_payload_failed_liteetharp_fsm_next_value2 <= 1'd0;
                 arp_table_response_response_payload_failed_liteetharp_fsm_next_value_ce2 <= 1'd1;
-                fsm_next_state0 <= 1'd0;
+                fsm_next_state <= 1'd0;
             end
         end
         default: begin
             if ((arp_table_sink_valid & arp_table_sink_payload_request)) begin
-                fsm_next_state0 <= 1'd1;
+                fsm_next_state <= 1'd1;
             end else begin
                 if ((arp_table_sink_valid & arp_table_sink_payload_reply)) begin
-                    fsm_next_state0 <= 2'd2;
+                    fsm_next_state <= 2'd2;
                 end else begin
                     if (arp_table_request_request_valid) begin
-                        fsm_next_state0 <= 3'd4;
+                        fsm_next_state <= 3'd4;
                     end else begin
                         if (arp_table_request_timer_done) begin
-                            fsm_next_state0 <= 2'd3;
+                            fsm_next_state <= 2'd3;
                         end
                     end
                 end
@@ -6648,44 +6716,83 @@ always @(*) begin
 end
 assign liteethudp_last = ((crossbar_sink_valid & crossbar_sink_last) & crossbar_sink_ready);
 assign liteethudp_ongoing0 = ((crossbar_sink_valid | liteethudp_ongoing1) & (~liteethudp_last));
-assign user_port_sink_valid = udp_sender_sink_valid;
-assign user_port_sink_last = udp_sender_sink_last;
-assign user_port_sink_payload_data = udp_sender_sink_payload_data;
-assign user_port_sink_param_ip_address = 32'd3232235777;
-assign user_port_sink_param_src_port = 13'd5678;
-assign user_port_sink_param_dst_port = 13'd5678;
-assign user_port_sink_param_length = 3'd4;
-assign user_port_sink_payload_last_be = 4'd8;
-assign user_port_sink_payload_error = 1'd0;
-assign udp_sender_sink_ready = user_port_sink_ready;
+assign pdm_clk = pdm_count[3];
+assign fifo_sink_valid = sink_sink_valid;
+assign sink_sink_ready = fifo_sink_ready;
+assign fifo_sink_first = sink_sink_first;
+assign fifo_sink_last = sink_sink_last;
+assign fifo_sink_payload_data = sink_sink_payload_data;
+assign fifo_syncfifo_din = {fifo_fifo_in_last, fifo_fifo_in_first, fifo_fifo_in_payload_data};
+assign {fifo_fifo_out_last, fifo_fifo_out_first, fifo_fifo_out_payload_data} = fifo_syncfifo_dout;
+assign fifo_sink_ready = fifo_syncfifo_writable;
+assign fifo_syncfifo_we = fifo_sink_valid;
+assign fifo_fifo_in_first = fifo_sink_first;
+assign fifo_fifo_in_last = fifo_sink_last;
+assign fifo_fifo_in_payload_data = fifo_sink_payload_data;
+assign fifo_source_valid = fifo_readable;
+assign fifo_source_first = fifo_fifo_out_first;
+assign fifo_source_last = fifo_fifo_out_last;
+assign fifo_source_payload_data = fifo_fifo_out_payload_data;
+assign fifo_re = fifo_source_ready;
+assign fifo_syncfifo_re = (fifo_syncfifo_readable & ((~fifo_readable) | fifo_re));
+assign fifo_level1 = (fifo_level0 + fifo_readable);
 always @(*) begin
-    barebonesudp_counter_next_value0 <= 32'd0;
-    barebonesudp_counter_next_value_ce0 <= 1'd0;
-    barebonesudp_led_signal_next_value1 <= 1'd0;
-    barebonesudp_led_signal_next_value_ce1 <= 1'd0;
-    fsm_next_state1 <= 1'd0;
-    udp_sender_sink_last <= 1'd0;
-    udp_sender_sink_payload_data <= 32'd0;
-    udp_sender_sink_valid <= 1'd0;
-    fsm_next_state1 <= fsm_state1;
-    case (fsm_state1)
+    fifo_wrport_adr <= 13'd0;
+    if (fifo_replace) begin
+        fifo_wrport_adr <= (fifo_produce - 1'd1);
+    end else begin
+        fifo_wrport_adr <= fifo_produce;
+    end
+end
+assign fifo_wrport_dat_w = fifo_syncfifo_din;
+assign fifo_wrport_we = (fifo_syncfifo_we & (fifo_syncfifo_writable | fifo_replace));
+assign fifo_do_read = (fifo_syncfifo_readable & fifo_syncfifo_re);
+assign fifo_rdport_adr = fifo_consume;
+assign fifo_syncfifo_dout = fifo_rdport_dat_r;
+assign fifo_rdport_re = fifo_do_read;
+assign fifo_syncfifo_writable = (fifo_level0 != 14'd8192);
+assign fifo_syncfifo_readable = (fifo_level0 != 1'd0);
+always @(*) begin
+    fifo_source_ready <= 1'd0;
+    packet_counter_next_value <= 6'd0;
+    packet_counter_next_value_ce <= 1'd0;
+    source_source_last <= 1'd0;
+    source_source_param_dst_port <= 16'd0;
+    source_source_param_ip_address <= 32'd0;
+    source_source_param_length <= 16'd0;
+    source_source_param_src_port <= 16'd0;
+    source_source_payload_data <= 32'd0;
+    source_source_payload_last_be <= 4'd0;
+    source_source_valid <= 1'd0;
+    udpstreamer_next_state <= 1'd0;
+    udpstreamer_next_state <= udpstreamer_state;
+    case (udpstreamer_state)
         1'd1: begin
-            udp_sender_sink_valid <= 1'd1;
-            udp_sender_sink_payload_data <= barebonesudp_send_data;
-            udp_sender_sink_last <= 1'd1;
-            if (udp_sender_sink_ready) begin
-                fsm_next_state1 <= 1'd0;
+            source_source_valid <= 1'd1;
+            source_source_last <= ((packet_counter == 6'd47) & fifo_source_last);
+            source_source_param_src_port <= 13'd5678;
+            source_source_param_dst_port <= 13'd5678;
+            source_source_param_ip_address <= 32'd3232235777;
+            source_source_param_length <= 10'd576;
+            source_source_payload_data <= fifo_source_payload_data;
+            source_source_payload_last_be <= 4'd8;
+            if (source_source_ready) begin
+                fifo_source_ready <= 1'd1;
+                if (fifo_source_last) begin
+                    if ((packet_counter == 6'd47)) begin
+                        udpstreamer_next_state <= 1'd0;
+                        packet_counter_next_value <= 1'd0;
+                        packet_counter_next_value_ce <= 1'd1;
+                    end else begin
+                        packet_counter_next_value <= (packet_counter + 1'd1);
+                        packet_counter_next_value_ce <= 1'd1;
+                    end
+                end
             end
         end
         default: begin
-            barebonesudp_counter_next_value0 <= (barebonesudp_counter + 1'd1);
-            barebonesudp_counter_next_value_ce0 <= 1'd1;
-            if ((barebonesudp_counter >= 16'd50000)) begin
-                barebonesudp_counter_next_value0 <= 1'd0;
-                barebonesudp_counter_next_value_ce0 <= 1'd1;
-                fsm_next_state1 <= 1'd1;
-                barebonesudp_led_signal_next_value1 <= (~barebonesudp_led_signal);
-                barebonesudp_led_signal_next_value_ce1 <= 1'd1;
+            if ((fifo_level1 > 10'd512)) begin
+                udpstreamer_next_state <= 1'd1;
             end
         end
     endcase
@@ -7215,7 +7322,7 @@ always @(posedge sys_clk) begin
     if (arp_table_cache_error_liteetharp_liteetharpcache_next_value_ce2) begin
         arp_table_cache_error <= arp_table_cache_error_liteetharp_liteetharpcache_next_value2;
     end
-    fsm_state0 <= fsm_next_state0;
+    fsm_state <= fsm_next_state;
     if (arp_table_request_pending_liteetharp_fsm_next_value_ce0) begin
         arp_table_request_pending <= arp_table_request_pending_liteetharp_fsm_next_value0;
     end
@@ -7530,12 +7637,57 @@ always @(posedge sys_clk) begin
             liteethudp_first <= 1'd0;
         end
     end
-    fsm_state1 <= fsm_next_state1;
-    if (barebonesudp_counter_next_value_ce0) begin
-        barebonesudp_counter <= barebonesudp_counter_next_value0;
+    if (((pdm_count & 3'd7) == 3'd5)) begin
+        pdm_data_reg <= pdm_data;
     end
-    if (barebonesudp_led_signal_next_value_ce1) begin
-        barebonesudp_led_signal <= barebonesudp_led_signal_next_value1;
+    if (((pdm_count & 4'd15) == 1'd0)) begin
+        pdm_source_payload_data <= pdm_packet_id;
+        pdm_source_valid <= 1'd1;
+        pdm_source_first <= 1'd1;
+    end else begin
+        if (((pdm_count & 3'd7) == 1'd1)) begin
+            pdm_source_payload_data <= pdm_data_reg;
+            pdm_source_valid <= 1'd1;
+            pdm_source_first <= 1'd0;
+        end else begin
+            pdm_source_valid <= 1'd0;
+            pdm_source_first <= 1'd0;
+        end
+    end
+    if (((pdm_count & 4'd15) == 4'd9)) begin
+        pdm_source_last <= 1'd1;
+    end else begin
+        pdm_source_last <= 1'd0;
+    end
+    pdm_count <= (pdm_count + 1'd1);
+    if (((pdm_count & 4'd15) == 4'd15)) begin
+        pdm_packet_id <= (pdm_packet_id + 1'd1);
+    end
+    if (fifo_syncfifo_re) begin
+        fifo_readable <= 1'd1;
+    end else begin
+        if (fifo_re) begin
+            fifo_readable <= 1'd0;
+        end
+    end
+    if (((fifo_syncfifo_we & fifo_syncfifo_writable) & (~fifo_replace))) begin
+        fifo_produce <= (fifo_produce + 1'd1);
+    end
+    if (fifo_do_read) begin
+        fifo_consume <= (fifo_consume + 1'd1);
+    end
+    if (((fifo_syncfifo_we & fifo_syncfifo_writable) & (~fifo_replace))) begin
+        if ((~fifo_do_read)) begin
+            fifo_level0 <= (fifo_level0 + 1'd1);
+        end
+    end else begin
+        if (fifo_do_read) begin
+            fifo_level0 <= (fifo_level0 - 1'd1);
+        end
+    end
+    udpstreamer_state <= udpstreamer_next_state;
+    if (packet_counter_next_value_ce) begin
+        packet_counter <= packet_counter_next_value;
     end
     wishbone2csr_state <= wishbone2csr_next_state;
     interface0_bank_bus_dat_r <= 1'd0;
@@ -7697,8 +7849,16 @@ always @(posedge sys_clk) begin
         rx_depacketizer_delayed_last_be <= 4'd0;
         rx_depacketizer_was_in_copy <= 1'd0;
         rx_count <= 16'd0;
-        barebonesudp_counter <= 32'd0;
-        barebonesudp_led_signal <= 1'd0;
+        pdm_source_valid <= 1'd0;
+        pdm_source_payload_data <= 32'd0;
+        pdm_count <= 4'd0;
+        pdm_packet_id <= 32'd0;
+        pdm_data_reg <= 1'd0;
+        packet_counter <= 6'd0;
+        fifo_readable <= 1'd0;
+        fifo_level0 <= 14'd0;
+        fifo_produce <= 13'd0;
+        fifo_consume <= 13'd0;
         liteethmac_txdatapath_liteethmacpaddinginserter_state <= 1'd0;
         liteethmac_txdatapath_bufferizeendpoints_state <= 2'd0;
         liteethmac_txdatapath_liteethmacpreambleinserter_state <= 2'd0;
@@ -7723,7 +7883,7 @@ always @(posedge sys_clk) begin
         liteetharprx_fsm1_state <= 1'd0;
         liteetharprx_state <= 2'd0;
         liteetharpcache_state <= 3'd0;
-        fsm_state0 <= 3'd0;
+        fsm_state <= 3'd0;
         liteethip_liteethiptx_fsm0_state <= 2'd0;
         liteethip_liteethiptx_fsm1_state <= 1'd0;
         liteethip_liteethiptx_state <= 3'd0;
@@ -7753,7 +7913,7 @@ always @(posedge sys_clk) begin
         liteethudp_first <= 1'd1;
         liteethudp_ongoing1 <= 1'd0;
         liteethudp_sel_ongoing <= 1'd0;
-        fsm_state1 <= 1'd0;
+        udpstreamer_state <= 1'd0;
         wishbone2csr_state <= 1'd0;
     end
     multiregimpl00 <= ethphy_data_r;
@@ -8057,15 +8217,25 @@ assign icmp_echo_param_fifo_rdport_dat_r = storage_4_dat1;
 
 
 //------------------------------------------------------------------------------
-// Instance PDMCore of PDMCore Module.
+// Memory storage_5: 8192-words x 34-bit
 //------------------------------------------------------------------------------
-PDMCore PDMCore(
-	// Inputs.
-	.clk     (sys_clk),
+// Port 0 | Read: Sync  | Write: Sync | Mode: Read-First 
+// Port 1 | Read: Sync  | Write: ---- | 
+reg [33:0] storage_5[0:8191];
+reg [33:0] storage_5_dat0;
+reg [33:0] storage_5_dat1;
+always @(posedge sys_clk) begin
+	if (fifo_wrport_we)
+		storage_5[fifo_wrport_adr] <= fifo_wrport_dat_w;
+	storage_5_dat0 <= storage_5[fifo_wrport_adr];
+end
+always @(posedge sys_clk) begin
+	if (fifo_rdport_re)
+		storage_5_dat1 <= storage_5[fifo_rdport_adr];
+end
+assign fifo_wrport_dat_r = storage_5_dat0;
+assign fifo_rdport_dat_r = storage_5_dat1;
 
-	// Outputs.
-	.pdm_clk (pdm_clk_sig)
-);
 
 (* FREQUENCY_PIN_CLKI = "25.0", FREQUENCY_PIN_CLKOP = "50.0", ICP_CURRENT = "6", LPF_RESISTOR = "16", MFG_ENABLE_FILTEROPAMP = "1", MFG_GMCREF_SEL = "2" *)
 //------------------------------------------------------------------------------
@@ -8336,5 +8506,5 @@ TRELLIS_IO #(
 endmodule
 
 // -----------------------------------------------------------------------------
-//  Auto-Generated by LiteX on 2025-09-12 12:21:41.
+//  Auto-Generated by LiteX on 2025-09-12 21:35:32.
 //------------------------------------------------------------------------------

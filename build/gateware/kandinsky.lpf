@@ -32,14 +32,12 @@ LOCATE COMP "eth0_tx_data[2]" SITE "P1";
 IOBUF PORT "eth0_tx_data[2]" IO_TYPE=LVCMOS33;
 LOCATE COMP "eth0_tx_data[3]" SITE "R1";
 IOBUF PORT "eth0_tx_data[3]" IO_TYPE=LVCMOS33;
-LOCATE COMP "pdm_clk0" SITE "F1";
-IOBUF PORT "pdm_clk0" IO_TYPE=LVCMOS33;
-LOCATE COMP "user_led_n0" SITE "T6";
-IOBUF PORT "user_led_n0" IO_TYPE=LVCMOS33;
+LOCATE COMP "pdm_clk" SITE "F1";
+IOBUF PORT "pdm_clk" IO_TYPE=LVCMOS33;
+LOCATE COMP "pdm_data" SITE "C4";
+IOBUF PORT "pdm_data" IO_TYPE=LVCMOS33;
 FREQUENCY PORT "clk25" 25.0 MHz;
 
 FREQUENCY PORT "eth_rx_clk" 125.0 MHz;
 
 FREQUENCY PORT "eth_tx_clk" 125.0 MHz;
-
-FREQUENCY PORT "pdm_clk0" 3.125 MHz;

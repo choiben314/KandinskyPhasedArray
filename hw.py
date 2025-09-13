@@ -13,7 +13,7 @@ _io = [
 
     # PDM Interface
     ("pdm_clk", 0, Pins("F1"), IOStandard("LVCMOS33")),
-    ("pdm_data", 0, Pins("C4 D4 E4"), IOStandard("LVCMOS33")),  # Modify based on actual pinout
+    ("pdm_data", 0, Pins("C4"), IOStandard("LVCMOS33")),
 
     # serial
     ("serial", 0,

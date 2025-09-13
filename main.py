@@ -1,5 +1,10 @@
 #!/usr/bin/env python3
 
+# pyright: reportOperatorIssue=false
+# pyright: reportAttributeAccessIssue=false
+
+from typing import Any
+
 import argparse
 from typing import Any
 from migen import *
@@ -11,7 +16,8 @@ from litex.soc.interconnect import stream
 from liteeth.phy.ecp5rgmii import LiteEthPHYRGMII
 from liteeth.core import LiteEthUDPIPCore
 from liteeth.common import convert_ip
-from hw import Platform  # Your custom platform (hw.py)
+from hw import Platform
+from pdm import PDM, UDPStreamer
 
 # Clock and Reset Generator --------------------------------------------------------------------------------
 
@@ -32,30 +38,30 @@ class _CRG(LiteXModule):
 
 # UDP Sender Module ----------------------------------------------------------------------------------------
 
-class UDPSender(LiteXModule):
-    comb: Any
-    def __init__(self, ip_address, port, udp_port, data_width=32):
-        # Parameters
-        self.ip_address = convert_ip(ip_address)
-        self.port = port
-        self.data_width = data_width
+# class UDPSender(LiteXModule):
+#     comb: Any
+#     def __init__(self, ip_address, port, udp_port, data_width=32, length_bytes=2048):
+#         # Parameters
+#         self.ip_address = convert_ip(ip_address)
+#         self.port = port
+#         self.data_width = data_width
 
-        # Interfaces
-        self.sink = sink = stream.Endpoint([("data", data_width)])
+#         # Interfaces
+#         self.sink = sink = stream.Endpoint([("data", data_width)])
 
-        # Logic to connect the sink interface to the UDP port
-        self.comb += [
-            udp_port.sink.valid.eq(sink.valid),
-            udp_port.sink.last.eq(sink.last),
-            udp_port.sink.data.eq(sink.data),
-            udp_port.sink.ip_address.eq(self.ip_address),
-            udp_port.sink.src_port.eq(self.port),
-            udp_port.sink.dst_port.eq(self.port),
-            udp_port.sink.length.eq(4),
-            udp_port.sink.last_be.eq(1 << ((self.data_width // 8) - 1)),  # 0b1000 for 32-bit
-            udp_port.sink.error.eq(0),
-            sink.ready.eq(udp_port.sink.ready),
-        ]
+#         # Logic to connect the sink interface to the UDP port
+#         self.comb += [
+#             udp_port.sink.valid.eq(sink.valid),
+#             udp_port.sink.last.eq(sink.last),
+#             udp_port.sink.data.eq(sink.data),
+#             udp_port.sink.ip_address.eq(self.ip_address),
+#             udp_port.sink.src_port.eq(self.port),
+#             udp_port.sink.dst_port.eq(self.port),
+#             udp_port.sink.length.eq(length_bytes),
+#             udp_port.sink.last_be.eq(1 << ((self.data_width // 8) - 1)),  # 0b1000 for 32-bit
+#             udp_port.sink.error.eq(0),
+#             sink.ready.eq(udp_port.sink.ready),
+#         ]
 
 # Main SoC Class -------------------------------------------------------------------------------------------
 
@@ -97,61 +103,45 @@ class BarebonesUDP(SoCMini):
 
         # PDM Clock (~3.125 MHz from 50 MHz sys clock)
         self.platform.add_source("cores/pdm_core.v")
-        pdm_clk_sig = Signal()
-        pdm_clk_pad = platform.request("pdm_clk", 0)
-        self.specials += Instance("PDMCore",
-            i_clk=self.crg.cd_sys.clk,
-            o_pdm_clk=pdm_clk_sig
-        )
-        self.comb += pdm_clk_pad.eq(pdm_clk_sig)
-        self.platform.add_period_constraint(pdm_clk_pad, 1e9 / (sys_clk_freq / 16))
+        # pdm_clk_sig = Signal()
+        # pdm_clk_pad = platform.request("pdm_clk", 0)
+        # self.specials += Instance("PDMCore",
+        #     i_clk=self.crg.cd_sys.clk,
+        #     o_pdm_clk=pdm_clk_sig
+        # )
+        # self.comb += pdm_clk_pad.eq(pdm_clk_sig)
+        # self.platform.add_period_constraint(pdm_clk_pad, 1e9 / (sys_clk_freq / 16))
 
+        # PDM Data Generator Module
+        self.submodules.pdm = PDM(platform.request("pdm_clk"), platform.request("pdm_data"))
+
+        # # PDM Data (two mics on one data line: rising-edge = Mic0, falling-edge = Mic1)
+        # pdm_data_pads = platform.request("pdm_data", 0)  # 2-bit bus in platform; use bit 0 as shared line
+        # pdm_data_bit = pdm_data_pads[0]
+
+        
         # UDP Port
         udp_port = self.ethcore.udp.crossbar.get_port(port, dw=32)
 
-        # UDP Sender Module
-        self.udp_sender = UDPSender(
-            ip_address=host_ip_address,
-            port=port,
-            udp_port=udp_port,
-            data_width=32,
-        )
-        self.submodules += self.udp_sender
-
-        # Test Data Generator with FSM
-        self.test_data_generator(sys_clk_freq)
-
-    def test_data_generator(self, sys_clk_freq):
-        # Signals
-        counter = Signal(32)
-        led_signal = Signal()
-        send_data = Signal(32, reset=0xDEADBEEF)
-
-        # FSM
-        self.submodules.fsm = fsm = FSM(reset_state="IDLE")
-
-        # IDLE State: Wait for counter to reach the threshold
-        fsm.act("IDLE",
-            NextValue(counter, counter + 1),
-            If(counter >= sys_clk_freq // 1000,
-                NextValue(counter, 0),
-                NextState("SEND_PACKET"),
-                NextValue(led_signal, ~led_signal)
-            )
+        udp_streamer = UDPStreamer(
+            ip_address=convert_ip(host_ip_address),
+            udp_port=port,
         )
 
-        # SEND_PACKET State: Send the packet when ready
-        fsm.act("SEND_PACKET",
-            self.udp_sender.sink.valid.eq(1),
-            self.udp_sender.sink.data.eq(send_data),
-            self.udp_sender.sink.last.eq(1),  # Single-word packet
-            If(self.udp_sender.sink.ready,
-                NextState("IDLE")
-            )
-        )
-
-        # LED signal
-        self.comb += self.platform.request("user_led_n", 0).eq(led_signal)
+        self.submodules += udp_streamer
+        self.comb += self.pdm.source.connect(udp_streamer.sink)
+        self.comb += udp_streamer.source.connect(udp_port.sink)
+        # # UDP Sender Module
+        # PACKET_WORDS = 512
+        # self.udp_sender = UDPSender(
+        #     ip_address=host_ip_address,
+        #     port=port,
+        #     udp_port=udp_port,
+        #     data_width=32,
+        #     length_bytes=PACKET_WORDS * 4,
+        # )
+        # self.submodules += self.udp_sender
+    
 
 # Main Function --------------------------------------------------------------------------------------------
 
