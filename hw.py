@@ -13,7 +13,16 @@ _io = [
 
     # PDM Interface
     ("pdm_clk", 0, Pins("F1"), IOStandard("LVCMOS33")),
-    ("pdm_data", 0, Pins("C4"), IOStandard("LVCMOS33")),
+    ("pdm_data", 0, Pins(
+        "D3 F5 E3", # arm j1 (a_0 -> c_0)
+        "C4 D4 E4", # arm j2 (a_1 -> c_1)
+        "R2 T2 N6", # arm j3 (a_2 -> c_2)
+        "P5 R3 P2", # arm j4 (a_3 -> c_3)
+        "R14 T14 P12", # arm j5 (a_4 -> c_4)
+        "T13 R12 R13", # arm j6 (a_5 -> c_5)
+        "B16 C15 B15", # arm j7 (a_6 -> c_6)
+        "D16 E15 C16", # arm j8 (a_7 -> c_7)
+    ), IOStandard("LVCMOS33")),
 
     # serial
     ("serial", 0,

@@ -12,7 +12,7 @@ class PDM(Module):
         count = Signal(4) # ranges from 0 to 15
         packet_id = Signal(32)
 
-        data_reg = Signal(1)
+        data_reg = Signal(24) 
 
         # add packet id as header
         statement = If((count & 15) == 0,
